@@ -9,12 +9,11 @@ import (
 	"strconv"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
-	//name   string
+
 	port    int
 	leader  *proto.IncrementServiceClient
 	servers []Server
@@ -22,9 +21,11 @@ type Frontend struct {
 }
 
 type Server struct {
+
 	server   proto.IncrementServiceClient
 	isLeader bool
 	port     int32
+
 }
 
 //var port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
@@ -48,6 +49,7 @@ func newFrontend() *Frontend {
 }
 
 func (f *Frontend) connectToServer(portNumber int32) {
+
 	//dialing the server
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -68,6 +70,7 @@ func (f *Frontend) connectToServer(portNumber int32) {
 	if isLeader.IsLeader == true {
 		f.leader = &newServerToAdd
 		fmt.Println("found the leader")
+
 	}
 	//defer conn.Close()
 	wait := make(chan bool)
@@ -97,6 +100,7 @@ func startFrontend(frontend *Frontend) {
 }
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
+
 	//fmt.Printf("Printing the number of serevrs the frontend is connected to, %v", len(f.servers))
 	leader := *f.leader
 	response, er := leader.Increment(ctx, in)
@@ -130,4 +134,5 @@ func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.
 func removeServer(s []Server, i int) []Server {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
+
 }

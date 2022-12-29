@@ -91,7 +91,9 @@ func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*prot
 	return &proto.LeaderMessage{Id: int32(server.port), IsLeader: server.isLeader}, nil
 }
 
+
 func (s *Server) connectToReplica(server *Server, portNumber int32) {
+
 	// Connect with replica's IP
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithInsecure())
 	if err != nil {
@@ -135,10 +137,12 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 }
 
 func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
+
 	fmt.Printf("the value is: %v", c.value)
 	if in.Amount <= 0 {
 		log.Println("return fail")
 		return &proto.IncResponse{}, errors.New("You must increment!")
+
 	}
 	if c.isLeader {
 		//update it self first
@@ -173,12 +177,14 @@ func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*pr
 	return &proto.ReplicationAck{}, nil
 }
 
+
 // BULLY!!!!!!!
 func (s *Server) heartbeat() {
 	fmt.Println("A heartbeat was sent from the leader")
 	// For each replication client, make sure it does still exist
 	for i := 0; i < len(s.serverclients); i++ {
 		// Request info from the client repeatedly to discover changes and to notice of the connection is lost
+
 		isLeader, err := s.serverclients[i].replicaClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 		if err != nil {
