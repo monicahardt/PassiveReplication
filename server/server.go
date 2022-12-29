@@ -12,14 +12,12 @@ import (
 
 type Server struct {
 	proto.UnimplementedIncrementServiceServer
-	name string
-	port int
+	name  string
+	port  int
 	value int32
 }
 
-
 var port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
-
 
 func main() {
 
@@ -28,7 +26,6 @@ func main() {
 	server := &Server{
 		name: "serverName",
 		port: *port,
-	
 	}
 
 	go startServer(server)
@@ -37,8 +34,6 @@ func main() {
 
 	}
 }
-
-
 
 func startServer(server *Server) {
 	grpcServer := grpc.NewServer()                                           // create a new grpc server
@@ -50,7 +45,7 @@ func startServer(server *Server) {
 
 	log.Printf("Server started at port %v", server.port)
 
-	proto.RegisterAuctionServer(grpcServer, server)
+	proto.RegisterIncrementServiceServer(grpcServer, server) // register the server
 	serverError := grpcServer.Serve(listen)
 
 	if serverError != nil {
@@ -69,4 +64,4 @@ func startServer(server *Server) {
 // 	}
 
 // 	return &proto.Ack{Ack: fail}, errors.New("Something is very wrong")
-// } 
+// }
