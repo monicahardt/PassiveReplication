@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type IncrementServiceClient interface {
 	Increment(ctx context.Context, in *IncRequest, opts ...grpc.CallOption) (*IncResponse, error)
 	GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error)
+	Replicate(ctx context.Context, in *ReplicationValue, opts ...grpc.CallOption) (*ReplicationAck, error)
 }
 
 type incrementServiceClient struct {
@@ -52,12 +53,22 @@ func (c *incrementServiceClient) GetLeaderRequest(ctx context.Context, in *Empty
 	return out, nil
 }
 
+func (c *incrementServiceClient) Replicate(ctx context.Context, in *ReplicationValue, opts ...grpc.CallOption) (*ReplicationAck, error) {
+	out := new(ReplicationAck)
+	err := c.cc.Invoke(ctx, "/Passivereplication.IncrementService/Replicate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IncrementServiceServer is the server API for IncrementService service.
 // All implementations must embed UnimplementedIncrementServiceServer
 // for forward compatibility
 type IncrementServiceServer interface {
 	Increment(context.Context, *IncRequest) (*IncResponse, error)
 	GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error)
+	Replicate(context.Context, *ReplicationValue) (*ReplicationAck, error)
 	mustEmbedUnimplementedIncrementServiceServer()
 }
 
@@ -70,6 +81,9 @@ func (UnimplementedIncrementServiceServer) Increment(context.Context, *IncReques
 }
 func (UnimplementedIncrementServiceServer) GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeaderRequest not implemented")
+}
+func (UnimplementedIncrementServiceServer) Replicate(context.Context, *ReplicationValue) (*ReplicationAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Replicate not implemented")
 }
 func (UnimplementedIncrementServiceServer) mustEmbedUnimplementedIncrementServiceServer() {}
 
@@ -120,6 +134,24 @@ func _IncrementService_GetLeaderRequest_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IncrementService_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicationValue)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IncrementServiceServer).Replicate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Passivereplication.IncrementService/Replicate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IncrementServiceServer).Replicate(ctx, req.(*ReplicationValue))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IncrementService_ServiceDesc is the grpc.ServiceDesc for IncrementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +166,10 @@ var IncrementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLeaderRequest",
 			Handler:    _IncrementService_GetLeaderRequest_Handler,
+		},
+		{
+			MethodName: "Replicate",
+			Handler:    _IncrementService_Replicate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
