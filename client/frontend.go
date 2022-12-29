@@ -15,8 +15,13 @@ import (
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
 	//name   string
+<<<<<<< HEAD
 	port    int
 	leader  proto.IncrementServiceClient
+=======
+	port   int
+	leader *proto.IncrementServiceClient
+>>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
 	servers []Server
 	amount  int32
 }
@@ -44,7 +49,6 @@ func newFrontend() *Frontend {
 	go frontend.connectToServer(5003)
 	fmt.Println("try returning the new frontend with connnections")
 	return frontend
-
 }
 
 func (f *Frontend) connectToServer(portNumber int32) {
@@ -64,10 +68,22 @@ func (f *Frontend) connectToServer(portNumber int32) {
 		isLeader: isLeader.IsLeader,
 	})
 
+<<<<<<< HEAD
 	if isLeader.IsLeader == true {
 		f.leader = newServerToAdd
+=======
+	if(isLeader.IsLeader == true){
+		f.leader = &newServerToAdd
+		fmt.Println("found the leader")
+>>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
 	}
-	defer conn.Close()
+	//defer conn.Close()
+	wait := make(chan bool)
+	<-wait
+
+	// for {
+	// fmt.Println("Running frontend")
+	// }
 }
 
 func startFrontend(frontend *Frontend) {
@@ -89,6 +105,20 @@ func startFrontend(frontend *Frontend) {
 }
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
+<<<<<<< HEAD
 	response, err := f.leader.Increment(ctx, in)
 	return response, err
 }
+=======
+	fmt.Println("somethiong went wrong in frontend increment method")
+	// if(f.leader == nil){
+	// 	fmt.Println("We are trying to increment on a leader that is null")
+	// }
+
+	
+	// leader := *f.leader
+	// response, err:= leader.Increment(ctx, in)
+	// return response, err
+	return &proto.IncResponse{NewAmount: 5}, nil
+}
+>>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085

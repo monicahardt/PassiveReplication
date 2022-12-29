@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"time"
 
@@ -44,10 +43,10 @@ func main() {
 	s := &Server{
 		port: *port,
 		serverclients: make([]ReplicaClient, 0),
-		isLeader: os.Args[1] == "5001",
+		isLeader: *port == 5001,
 	}
 
-	if(s.port == 5001){
+	if(s.isLeader){
 	fmt.Println("now started the leader")
 	}
 
@@ -136,6 +135,7 @@ func (s *Server) connectToReplica(portNumber int32) {
 }
 
 func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error){
+	fmt.Println("It crashed in the serverclass")
 	if in.Amount <= 0 {
 		log.Println("return fail")
 		return &proto.IncResponse{}, errors.New("You must increment!")
