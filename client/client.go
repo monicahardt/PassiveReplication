@@ -19,9 +19,11 @@ var (
 	clientPort   = flag.Int("cPort", 0, "client port number")
 )
 
+var frontend *Frontend
+
 func main() {
 	flag.Parse()	
-	frontend := newFrontend()
+	frontend = newFrontend()
 
 	client := &Client{
 		id:         *clientPort,
@@ -30,6 +32,7 @@ func main() {
 
 	go scanInput(client, frontend)
 	for {
+		
 	}
 }
 
@@ -43,6 +46,7 @@ func scanInput(client *Client, frontend *Frontend) {
 		// else prints invalid
 		scanner.Scan()
 		amountToIncrement, _ := strconv.ParseInt(scanner.Text(), 10, 0)
+		fmt.Printf("Scanned an input, %v", amountToIncrement)
 		reponse, err := frontend.Increment(context.Background(), &proto.IncRequest{Amount: int32(amountToIncrement)})
 
 		if err != nil {
