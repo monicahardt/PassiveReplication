@@ -22,13 +22,9 @@ var (
 var frontend *Frontend
 
 func main() {
-<<<<<<< HEAD
+
 	flag.Parse()
 	frontend := newFrontend()
-=======
-	flag.Parse()	
-	frontend = newFrontend()
->>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
 
 	client := &Client{
 		id:         *clientPort,
@@ -37,7 +33,7 @@ func main() {
 
 	go scanInput(client, frontend)
 	for {
-		
+
 	}
 }
 

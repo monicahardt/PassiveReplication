@@ -9,25 +9,18 @@ import (
 	"strconv"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
-	//name   string
-<<<<<<< HEAD
 	port    int
-	leader  proto.IncrementServiceClient
-=======
-	port   int
-	leader *proto.IncrementServiceClient
->>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
+	leader  *proto.IncrementServiceClient
 	servers []Server
 	amount  int32
 }
 
 type Server struct {
-	server   proto.IncrementServiceClient
+	server   *proto.IncrementServiceClient
 	isLeader bool
 }
 
@@ -52,30 +45,36 @@ func newFrontend() *Frontend {
 }
 
 func (f *Frontend) connectToServer(portNumber int32) {
-	//dialing the server
-	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Printf("Could not connect: %s", err)
-	}
-	//if nothing is wrong
-	log.Printf("Frontend connected to server at port: %v\n", portNumber)
+	// Sometimes connecting fails for no obvious reason. We retry connecting 5 times if connection is not established yet.
+	retry := 5
+	for i := 0; i < retry; i++ {
+		//dialing the server
+		conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithInsecure())
+		if err != nil {
+			log.Printf("Could not connect: %s", err)
+		}
+		defer conn.Close()
 
-	newServerToAdd := proto.NewIncrementServiceClient(conn)
-	isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(), &proto.Empty{})
+		//if nothing is wrong
+		log.Printf("Frontend connected to server at port: %v\n", portNumber)
 
-	f.servers = append(f.servers, Server{
-		server:   newServerToAdd,
-		isLeader: isLeader.IsLeader,
-	})
+		newServerToAdd := proto.NewIncrementServiceClient(conn)
+		isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(), &proto.Empty{})
+		if err == nil {
+			f.servers = append(f.servers, Server{
+				server:   &newServerToAdd,
+				isLeader: isLeader.IsLeader,
+			})
 
-<<<<<<< HEAD
-	if isLeader.IsLeader == true {
-		f.leader = newServerToAdd
-=======
-	if(isLeader.IsLeader == true){
-		f.leader = &newServerToAdd
-		fmt.Println("found the leader")
->>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
+			if isLeader.IsLeader == true {
+				fmt.Println("------found leader------")
+				f.leader = &newServerToAdd
+			}
+
+			retry = 0
+		} else {
+			fmt.Println("Could not reach replication node: " + err.Error())
+		}
 	}
 	//defer conn.Close()
 	wait := make(chan bool)
@@ -105,20 +104,14 @@ func startFrontend(frontend *Frontend) {
 }
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
-<<<<<<< HEAD
-	response, err := f.leader.Increment(ctx, in)
-	return response, err
-}
-=======
-	fmt.Println("somethiong went wrong in frontend increment method")
-	// if(f.leader == nil){
-	// 	fmt.Println("We are trying to increment on a leader that is null")
-	// }
 
-	
-	// leader := *f.leader
-	// response, err:= leader.Increment(ctx, in)
-	// return response, err
-	return &proto.IncResponse{NewAmount: 5}, nil
+	if f.leader == nil {
+		fmt.Println("We are trying to increment on a leader that is null")
+	}
+
+	leader := *f.leader
+
+	response, err := leader.Increment(ctx, in)
+	fmt.Printf("response is %v", response.GetNewAmount())
+	return &proto.IncResponse{NewAmount: response.GetNewAmount()}, err
 }
->>>>>>> f9418df0ebd692d5599fe499194f13d1b31cb085
