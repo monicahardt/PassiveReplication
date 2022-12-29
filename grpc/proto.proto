@@ -14,9 +14,22 @@ message IncResponse {
     int32 newAmount = 1;
 }
 
+message Empty {}
+
+
+message LeaderMessage {
+    int32 id = 1;
+    bool isLeader = 2;
+}
+
 service IncrementService{
     rpc Increment(IncRequest) returns (IncResponse) {}
+    rpc GetLeaderRequest(Empty) returns (LeaderMessage) {}
 }
+
+
+
+
 
 //go mod init PassiveReplcation (Hvad mappen hedder)
 //protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative grpc/proto.proto

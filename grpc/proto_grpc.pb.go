@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type IncrementServiceClient interface {
 	Increment(ctx context.Context, in *IncRequest, opts ...grpc.CallOption) (*IncResponse, error)
+	GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error)
 }
 
 type incrementServiceClient struct {
@@ -42,11 +43,21 @@ func (c *incrementServiceClient) Increment(ctx context.Context, in *IncRequest, 
 	return out, nil
 }
 
+func (c *incrementServiceClient) GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error) {
+	out := new(LeaderMessage)
+	err := c.cc.Invoke(ctx, "/Passivereplication.IncrementService/GetLeaderRequest", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IncrementServiceServer is the server API for IncrementService service.
 // All implementations must embed UnimplementedIncrementServiceServer
 // for forward compatibility
 type IncrementServiceServer interface {
 	Increment(context.Context, *IncRequest) (*IncResponse, error)
+	GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error)
 	mustEmbedUnimplementedIncrementServiceServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedIncrementServiceServer struct {
 
 func (UnimplementedIncrementServiceServer) Increment(context.Context, *IncRequest) (*IncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Increment not implemented")
+}
+func (UnimplementedIncrementServiceServer) GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLeaderRequest not implemented")
 }
 func (UnimplementedIncrementServiceServer) mustEmbedUnimplementedIncrementServiceServer() {}
 
@@ -88,6 +102,24 @@ func _IncrementService_Increment_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IncrementService_GetLeaderRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IncrementServiceServer).GetLeaderRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Passivereplication.IncrementService/GetLeaderRequest",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IncrementServiceServer).GetLeaderRequest(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IncrementService_ServiceDesc is the grpc.ServiceDesc for IncrementService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +130,10 @@ var IncrementService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Increment",
 			Handler:    _IncrementService_Increment_Handler,
+		},
+		{
+			MethodName: "GetLeaderRequest",
+			Handler:    _IncrementService_GetLeaderRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
