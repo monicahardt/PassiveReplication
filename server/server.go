@@ -16,22 +16,22 @@ import (
 
 type Server struct {
 	proto.UnimplementedIncrementServiceServer
-	port int
-	value int32
-	isLeader bool
+	port          int
+	value         int32
+	isLeader      bool
 	serverclients []ReplicaClient
 }
 
 type ReplicaClient struct {
 	replicaClient proto.IncrementServiceClient
-	isLeader bool
-	port int
-	value int32
+	isLeader      bool
+	port          int
+	value         int32
 }
 
 var (
-	port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
-	localAddress int32
+	port          = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
+	localAddress  int32
 	leaderAddress int32
 )
 
@@ -40,22 +40,22 @@ func main() {
 	//Here we create a new server
 	//if the server has port 5001 it is chosen to be the first leader
 	s := &Server{
-		port: *port,
+		port:          *port,
 		serverclients: make([]ReplicaClient, 0),
-		isLeader: *port == 5001,
+		isLeader:      *port == 5001,
 	}
 
-	if(s.isLeader){
-	fmt.Println("now started the leader")
+	if s.isLeader {
+		fmt.Println("now started the leader")
 	}
 
 	//starting this server and listening on the port
 	go startServer(s)
-	
+
 	fmt.Println("Connecting to other replication nodes")
-	go s.connectToReplica(s,5001)
-	go s.connectToReplica(s,5002)
-	go s.connectToReplica(s,5003)
+	go s.connectToReplica(s, 5001)
+	go s.connectToReplica(s, 5002)
+	go s.connectToReplica(s, 5003)
 	fmt.Println("Finished connection to the other replicas")
 
 	go func() {
@@ -91,7 +91,6 @@ func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*prot
 	return &proto.LeaderMessage{Id: int32(server.port), IsLeader: server.isLeader}, nil
 }
 
-
 func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	// Connect with replica's IP
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithInsecure())
@@ -111,23 +110,23 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 		replicationClientMessage, err := newReplicationClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 		if err == nil {
 			newIsLeader = replicationClientMessage.IsLeader
-			
+
 			break
 		}
 		// Retry until the connection is established
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	log.Printf("Successfully connected to the replica with port %v!",portNumber)
+	log.Printf("Successfully connected to the replica with port %v!", portNumber)
 
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
 	server.serverclients = append(server.serverclients, ReplicaClient{
 		replicaClient: newReplicationClient,
-		isLeader: newIsLeader,
-		port: int(portNumber),
+		isLeader:      newIsLeader,
+		port:          int(portNumber),
 	})
 
-	fmt.Printf("**************printing size: %v", len(server.serverclients))
+	//fmt.Printf("**************printing size: %v", len(server.serverclients))
 
 	// Keep the go-routine running to not close the connection
 	for {
@@ -135,44 +134,46 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	}
 }
 
-func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error){
+func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
+	fmt.Printf("the value is: %v", c.value)
 	if in.Amount <= 0 {
 		log.Println("return fail")
 		return &proto.IncResponse{}, errors.New("You must increment!")
-	} 
-	if(c.isLeader){
+	}
+	if c.isLeader {
 		//update it self first
 		c.value = c.value + in.Amount
+		fmt.Printf("the value after increment is: %v", c.value)
 		fmt.Println("Increment in the leader class was called")
-		
-		for i := 0; i < len(c.serverclients); i++ {
-			fmt.Println("in loooooooooppppppp")
-			fmt.Println("trying to update the other replicas")
-			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(),&proto.ReplicationValue{Value: c.value})
 
-			if(err != nil){
+		for i := 0; i < len(c.serverclients); i++ {
+			// fmt.Println("in loooooooooppppppp")
+			// fmt.Println("trying to update the other replicas")
+			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(), &proto.ReplicationValue{Value: c.value})
+
+			if err != nil {
 				fmt.Println("Failed to update a replica")
 			}
 		}
 	} else {
-		fmt.Printf("increment in non-leader was called the value is not: %v",c.value)
-	} 
-	
+		fmt.Printf("increment in non-leader was called the value is not: %v", c.value)
+	}
+
 	fmt.Println("udated all servers")
 	return &proto.IncResponse{NewAmount: c.value}, nil
-} 
+}
 
-func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error){
+func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error) {
 	//If the replicated server does not have the correct value
 	fmt.Printf("Replicate was called the value before was %v", s.value)
-	if(s.value != in.Value){
+	if s.value != in.Value {
 		s.value = in.Value
 	}
 	fmt.Printf("Replicate was called the value before was %v", s.value)
 	return &proto.ReplicationAck{}, nil
 }
 
-//BULLY!!!!!!!
+// BULLY!!!!!!!
 func (s *Server) heartbeat() {
 	fmt.Println("A heartbeat was sent from the leader")
 	// For each replication client, make sure it does still exist
@@ -223,7 +224,6 @@ func (s *Server) heartbeat() {
 		}
 	}
 }
-
 
 func removeReplicationClient(s []ReplicaClient, i int) []ReplicaClient {
 	s[i] = s[len(s)-1]
