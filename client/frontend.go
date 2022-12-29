@@ -15,20 +15,20 @@ import (
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
 	//name   string
-	port   int
-	leader proto.IncrementServiceClient
+	port    int
+	leader  proto.IncrementServiceClient
 	servers []Server
-	amount int32
+	amount  int32
 }
 
 type Server struct {
-	server proto.IncrementServiceClient
-	isLeader           bool
+	server   proto.IncrementServiceClient
+	isLeader bool
 }
 
 //var port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
 
-func newFrontend() *Frontend{
+func newFrontend() *Frontend {
 	fmt.Printf("called frontend method")
 
 	frontend := &Frontend{
@@ -47,7 +47,7 @@ func newFrontend() *Frontend{
 
 }
 
-func (f *Frontend) connectToServer(portNumber int32){
+func (f *Frontend) connectToServer(portNumber int32) {
 	//dialing the server
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -57,19 +57,18 @@ func (f *Frontend) connectToServer(portNumber int32){
 	log.Printf("Frontend connected to server at port: %v\n", portNumber)
 
 	newServerToAdd := proto.NewIncrementServiceClient(conn)
-	isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(),&proto.Empty{})
+	isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 	f.servers = append(f.servers, Server{
-		server: newServerToAdd,
+		server:   newServerToAdd,
 		isLeader: isLeader.IsLeader,
 	})
 
-	if(isLeader.IsLeader == true){
+	if isLeader.IsLeader == true {
 		f.leader = newServerToAdd
 	}
 	defer conn.Close()
 }
-
 
 func startFrontend(frontend *Frontend) {
 	grpcServer := grpc.NewServer()
@@ -89,8 +88,7 @@ func startFrontend(frontend *Frontend) {
 	}
 }
 
-
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
-	response, err:= f.leader.Increment(ctx, in)
+	response, err := f.leader.Increment(ctx, in)
 	return response, err
 }
