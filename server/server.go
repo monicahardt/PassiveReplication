@@ -20,7 +20,6 @@ type Server struct {
 	value int32
 	isLeader bool
 	serverclients []ReplicaClient
-
 }
 
 type ReplicaClient struct {
@@ -54,14 +53,14 @@ func main() {
 	go startServer(s)
 	
 	fmt.Println("Connecting to other replication nodes")
-	go s.connectToReplica(5001)
-	go s.connectToReplica(5002)
-	go s.connectToReplica(5003)
+	go s.connectToReplica(s,5001)
+	go s.connectToReplica(s,5002)
+	go s.connectToReplica(s,5003)
 	fmt.Println("Finished connection to the other replicas")
 
 	go func() {
 		for {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(30000 * time.Millisecond)
 			s.heartbeat()
 		}
 	}()
@@ -93,7 +92,7 @@ func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*prot
 }
 
 
-func (s *Server) connectToReplica(portNumber int32) {
+func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	// Connect with replica's IP
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithInsecure())
 	if err != nil {
@@ -112,7 +111,7 @@ func (s *Server) connectToReplica(portNumber int32) {
 		replicationClientMessage, err := newReplicationClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 		if err == nil {
 			newIsLeader = replicationClientMessage.IsLeader
-			//newId = replicationClientMessage.Id
+			
 			break
 		}
 		// Retry until the connection is established
@@ -122,11 +121,13 @@ func (s *Server) connectToReplica(portNumber int32) {
 	log.Printf("Successfully connected to the replica with port %v!",portNumber)
 
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
-	s.serverclients = append(s.serverclients, ReplicaClient{
+	server.serverclients = append(server.serverclients, ReplicaClient{
 		replicaClient: newReplicationClient,
 		isLeader: newIsLeader,
 		port: int(portNumber),
 	})
+
+	fmt.Printf("**************printing size: %v", len(server.serverclients))
 
 	// Keep the go-routine running to not close the connection
 	for {
@@ -135,29 +136,48 @@ func (s *Server) connectToReplica(portNumber int32) {
 }
 
 func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error){
-	fmt.Println("It crashed in the serverclass")
 	if in.Amount <= 0 {
 		log.Println("return fail")
 		return &proto.IncResponse{}, errors.New("You must increment!")
-	} else {
+	} 
+	if(c.isLeader){
+		//update it self first
 		c.value = c.value + in.Amount
-	}
-	for i := 0; i < len(c.serverclients); i++ {
-		c.serverclients[i].value = c.value
-	}
+		fmt.Println("Increment in the leader class was called")
+		
+		for i := 0; i < len(c.serverclients); i++ {
+			fmt.Println("in loooooooooppppppp")
+			fmt.Println("trying to update the other replicas")
+			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(),&proto.ReplicationValue{Value: c.value})
 
+			if(err != nil){
+				fmt.Println("Failed to update a replica")
+			}
+		}
+	} else {
+		fmt.Printf("increment in non-leader was called the value is not: %v",c.value)
+	} 
+	
 	fmt.Println("udated all servers")
-	return &proto.IncResponse{NewAmount: c.value}, errors.New("Something is very wrong")
+	return &proto.IncResponse{NewAmount: c.value}, nil
 } 
+
+func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error){
+	//If the replicated server does not have the correct value
+	fmt.Printf("Replicate was called the value before was %v", s.value)
+	if(s.value != in.Value){
+		s.value = in.Value
+	}
+	fmt.Printf("Replicate was called the value before was %v", s.value)
+	return &proto.ReplicationAck{}, nil
+}
 
 //BULLY!!!!!!!
 func (s *Server) heartbeat() {
+	fmt.Println("A heartbeat was sent from the leader")
 	// For each replication client, make sure it does still exist
 	for i := 0; i < len(s.serverclients); i++ {
 		// Request info from the client repeatedly to discover changes and to notice of the connection is lost
-		
-		
-
 		isLeader, err := s.serverclients[i].replicaClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 		if err != nil {
@@ -195,6 +215,7 @@ func (s *Server) heartbeat() {
 					s.isLeader = true
 				}
 				log.Println("A new leader has been picked")
+				log.Printf("the server with port: %v, has boolean isLeader = %v ", s.port, s.isLeader)
 			}
 		} else {
 			// Set isLeader based on node info. This lets the node discover new leaders

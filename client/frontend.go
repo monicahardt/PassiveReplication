@@ -24,6 +24,7 @@ type Frontend struct {
 type Server struct {
 	server proto.IncrementServiceClient
 	isLeader           bool
+	port int32
 }
 
 //var port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
@@ -61,6 +62,7 @@ func (f *Frontend) connectToServer(portNumber int32){
 	f.servers = append(f.servers, Server{
 		server: newServerToAdd,
 		isLeader: isLeader.IsLeader,
+		port: portNumber,
 	})
 
 	if(isLeader.IsLeader == true){
@@ -97,14 +99,36 @@ func startFrontend(frontend *Frontend) {
 
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
-	fmt.Println("somethiong went wrong in frontend increment method")
-	// if(f.leader == nil){
-	// 	fmt.Println("We are trying to increment on a leader that is null")
-	// }
+	fmt.Printf("Printing the number of serevrs the frontend is connected to, %v", len(f.servers))
+	leader := *f.leader
+	response, er:= leader.Increment(ctx, in)
+	if(er != nil){
+		fmt.Println("The frontend found out that the leader is dead, now going to find the new one")
+		//here we want to remove the dead leader form the frontends slice of servers
+		
+		for i := 0; i < len(f.servers); i++ {
+			if(5001 == f.servers[i].port){
+				f.servers = removeServer(f.servers,i)
+			}
+		}
+	}
 
-	
-	// leader := *f.leader
-	// response, err:= leader.Increment(ctx, in)
-	// return response, err
-	return &proto.IncResponse{NewAmount: 5}, nil
+	for i := 0; i < len(f.servers); i++ {
+		fmt.Println("Going though slice to find new leader")
+		message, _ := f.servers[i].server.GetLeaderRequest(context.Background(),&proto.Empty{})
+		if(message.IsLeader){
+			f.leader = &f.servers[i].server
+			fmt.Println("Updated the leeeeeader WHOOOOOOOOO")
+		} else {
+			fmt.Println("YOOOOOOOOOOO")
+		}
+	}
+	leaderNew := *f.leader
+	response, err := leaderNew.Increment(ctx, in)
+	return response, err
+}
+
+func removeServer(s []Server, i int) []Server {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }
