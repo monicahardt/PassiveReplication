@@ -12,9 +12,9 @@ import (
 
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
-	name   string
-	port   int
-	server proto.IncrementServiceClient
+	name    string
+	port    int
+	servers []proto.IncrementServiceClient
 }
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
