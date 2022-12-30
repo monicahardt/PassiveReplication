@@ -16,22 +16,22 @@ import (
 
 type Server struct {
 	proto.UnimplementedIncrementServiceServer
-	port int
-	value int32
-	isLeader bool
+	port          int
+	value         int32
+	isLeader      bool
 	serverclients []ReplicaClient
 }
 
 type ReplicaClient struct {
 	replicaClient proto.IncrementServiceClient
-	isLeader bool
-	port int
-	value int32
+	isLeader      bool
+	port          int
+	value         int32
 }
 
 var (
-	port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
-	localAddress int32
+	port          = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
+	localAddress  int32
 	leaderAddress int32
 )
 
@@ -40,7 +40,7 @@ func main() {
 	//Here we create a new server
 	//if the server has port 5001 it is chosen to be the first leader
 	s := &Server{
-		port: *port,
+		port:          *port,
 		serverclients: make([]ReplicaClient, 0),
 		isLeader: *port == 5003,
 	}
@@ -116,8 +116,8 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
 	server.serverclients = append(server.serverclients, ReplicaClient{
 		replicaClient: newReplicationClient,
-		isLeader: newIsLeader,
-		port: int(portNumber),
+		isLeader:      newIsLeader,
+		port:          int(portNumber),
 	})
 	fmt.Printf("************** This server has %v clients ***************'\n", len(server.serverclients))
 
@@ -143,6 +143,7 @@ func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.In
 	if(c.isLeader){
 		//update it self first
 		c.value = c.value + in.Amount
+		fmt.Printf("the value after increment is: %v", c.value)
 		fmt.Println("Increment in the leader class was called")
 		
 		//after updating itself, we have to notify the other clients
@@ -160,7 +161,7 @@ func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.In
 	return &proto.IncResponse{NewAmount: c.value, Id: int32(c.port)}, nil
 } 
 
-func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error){
+func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error) {
 	//If the replicated server does not have the correct value
 	fmt.Printf("Replicate was called")
 	if(s.value != in.Value){
@@ -170,11 +171,13 @@ func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*pr
 	return &proto.ReplicationAck{}, nil
 }
 
-//BULLY!!!!!!!
+
+// BULLY!!!!!!!
 func (s *Server) heartbeat() {
 	// For each replication client, make sure it does still exist
 	for i := 0; i < len(s.serverclients); i++ {
 		// Request info from the client repeatedly to discover changes and to notice of the connection is lost
+
 		isLeader, err := s.serverclients[i].replicaClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 		if err != nil {
@@ -223,7 +226,6 @@ func (s *Server) heartbeat() {
 		}
 	}
 }
-
 
 func removeReplicationClient(s []ReplicaClient, i int) []ReplicaClient {
 	s[i] = s[len(s)-1]

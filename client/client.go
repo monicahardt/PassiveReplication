@@ -16,16 +16,15 @@ type Client struct {
 }
 
 var (
-	clientPort   = flag.Int("cPort", 0, "client port number")
+	clientPort = flag.Int("cPort", 0, "client port number")
 )
 
 var frontend *Frontend
 
 func main() {
-	flag.Parse()	
-	frontend = newFrontend()
 
-
+	flag.Parse()
+	frontend := newFrontend()
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		amountToIncrement, _ := strconv.ParseInt(scanner.Text(), 10, 0)
@@ -40,7 +39,4 @@ func main() {
 	}
 }
 
-// go run client/client.go -cPort 4040
-
-
-
+// go run client/frontend.go client/client.go -cPort 8082

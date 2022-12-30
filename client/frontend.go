@@ -16,13 +16,15 @@ type Frontend struct {
 	port   int
 	leader *proto.IncrementServiceClient
 	servers []Server
-	amount int32
+	amount  int32
 }
 
 type Server struct {
-	server proto.IncrementServiceClient
-	isLeader           bool
-	port int32
+
+	server   proto.IncrementServiceClient
+	isLeader bool
+	port     int32
+
 }
 
 
@@ -41,7 +43,8 @@ func newFrontend() *Frontend{
 	return frontend
 }
 
-func (f *Frontend) connectToServer(portNumber int32){
+func (f *Frontend) connectToServer(portNumber int32) {
+
 	//dialing the server
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -51,17 +54,18 @@ func (f *Frontend) connectToServer(portNumber int32){
 	log.Printf("Frontend connected to server at port: %v\n", portNumber)
 
 	newServerToAdd := proto.NewIncrementServiceClient(conn)
-	isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(),&proto.Empty{})
+	isLeader, err := newServerToAdd.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 	f.servers = append(f.servers, Server{
-		server: newServerToAdd,
+		server:   newServerToAdd,
 		isLeader: isLeader.IsLeader,
 		port: isLeader.Id,
 	})
 
-	if(isLeader.IsLeader == true){
+	if isLeader.IsLeader == true {
 		f.leader = &newServerToAdd
 		fmt.Println("found the leader")
+
 	}
 	//defer conn.Close()
 	wait := make(chan bool)
@@ -112,4 +116,5 @@ func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.
 func removeServer(s []Server, i int) []Server {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
+
 }
