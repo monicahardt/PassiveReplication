@@ -61,7 +61,7 @@ func (f *Frontend) connectToServer(portNumber int32) {
 
 	if isLeader.IsLeader == true {
 		f.leader = &newServerToAdd
-		fmt.Printf("Fronted set the leader to be server with port: %v", isLeader.Id)
+		log.Printf("Fronted set the leader to be server with port: %v\n", isLeader.Id)
 	}
 
 	//defer conn.Close()
@@ -73,9 +73,9 @@ func (f *Frontend) connectToServer(portNumber int32) {
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
 	leader := *f.leader
 	response, err:= leader.Increment(ctx, in)
-	
+
 	if(err != nil){
-		fmt.Println("The frontend found out that the leader is dead")
+		log.Println("The frontend found out that the leader is dead")
 		//find highest portnumber an remove it. This is hardcoding, but don't know what else to do
 		toRemove := 0
 		highestPort := int32(5001)

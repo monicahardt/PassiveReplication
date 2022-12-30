@@ -37,7 +37,7 @@ var (
 )
 
 func main() {
-	//setting the log file
+	//setting the server log file
 	f, err := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
@@ -121,7 +121,7 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 		// Retry until the connection is established
 		time.Sleep(500 * time.Millisecond)
 	}
-	fmt.Printf("Successfully connected to the replica with port %v!",portNumber)
+	fmt.Printf("Successfully connected to the replica with port %v!\n",portNumber)
 	log.Printf("Server with id: %v connected to replicaclient with id: %v\n",s.port, portNumber)
 
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
@@ -130,7 +130,9 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 		isLeader:      newIsLeader,
 		port:          int(portNumber),
 	})
-	fmt.Printf("************** This server has %v clients ***************'\n", len(server.serverclients))
+
+	//If this is removed we have som goroutines issues and all servers will have 0 servers in their slice by the time we want to incremt!
+	fmt.Printf("This server has %v clients\n", len(server.serverclients))
 
 	// Keep the go-routine running to not close the connection
 	for {
@@ -140,8 +142,8 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 
 //tells us if this server is the leader
 func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*proto.LeaderMessage, error) {
-	log.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
-	fmt.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
+	//log.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
+	//fmt.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
 	return &proto.LeaderMessage{Id: int32(server.port), IsLeader: server.isLeader}, nil
 }
 
@@ -159,10 +161,8 @@ func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.In
 		log.Printf("The leader has now incremented to: %v\n", c.value)
 		
 		//after updating itself, we have to notify the other clients
-		fmt.Println("YOOOOOO WTF")
 		//with raft this is done with a heartbeat method
 		for i := 0; i < len(c.serverclients); i++ {
-			fmt.Println("We get here************************")
 			//calling replicate with the value of the leader
 			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(),&proto.ReplicationValue{Value: c.value})
 			if(err != nil){
@@ -231,7 +231,6 @@ func (s *Server) heartbeat() {
 			// Set isLeader based on node info. This lets the node discover new leaders
 			s.serverclients[i].isLeader = isLeader.IsLeader
 			//fmt.Println("There was no error in increment at the leader")
-			fmt.Printf("Status is that server with id: %v, is leader = %v", s.port, s.isLeader)
 		}
 	}
 }
