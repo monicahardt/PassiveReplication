@@ -12,6 +12,7 @@ message IncRequest {
 
 message IncResponse {
     int32 newAmount = 1;
+    int32 id = 2;
 }
 
 message Empty {}

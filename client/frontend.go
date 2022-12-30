@@ -5,17 +5,16 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"strconv"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Frontend struct {
 	proto.UnimplementedIncrementServiceServer
-
-	port    int
-	leader  *proto.IncrementServiceClient
+	port   int
+	leader *proto.IncrementServiceClient
 	servers []Server
 	amount  int32
 }
@@ -28,23 +27,16 @@ type Server struct {
 
 }
 
-//var port = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
 
-func newFrontend() *Frontend {
-	fmt.Printf("called frontend method")
-
+func newFrontend() *Frontend{
 	frontend := &Frontend{
-		//name:            "frontend",
-		//port:            *port,
 		servers: make([]Server, 0),
 	}
 
-	//go startFrontend(frontend)
 	//we have to make servers at all these ports at program start
 	go frontend.connectToServer(5001)
 	go frontend.connectToServer(5002)
 	go frontend.connectToServer(5003)
-	fmt.Println("try returning the new frontend with connnections")
 	return frontend
 }
 
@@ -53,7 +45,7 @@ func (f *Frontend) connectToServer(portNumber int32) {
 	//dialing the server
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Printf("Could not connect: %s", err)
+		log.Printf("Could not connect: %s\n", err)
 	}
 	//if nothing is wrong
 	log.Printf("Frontend connected to server at port: %v\n", portNumber)
@@ -64,71 +56,48 @@ func (f *Frontend) connectToServer(portNumber int32) {
 	f.servers = append(f.servers, Server{
 		server:   newServerToAdd,
 		isLeader: isLeader.IsLeader,
-		port:     portNumber,
+		port: isLeader.Id,
 	})
 
 	if isLeader.IsLeader == true {
 		f.leader = &newServerToAdd
-		fmt.Println("found the leader")
-
+		log.Printf("Fronted set the leader to be server with port: %v\n", isLeader.Id)
 	}
+
 	//defer conn.Close()
 	wait := make(chan bool)
 	<-wait
-
-	// for {
-	// fmt.Println("Running frontend")
-	// }
 }
 
-func startFrontend(frontend *Frontend) {
-	grpcServer := grpc.NewServer()
-	listen, err := net.Listen("tcp", "localhost:"+strconv.Itoa(frontend.port))
-
-	if err != nil {
-		log.Fatalln("Could not start listener")
-	}
-
-	log.Printf("Frontend started at port %v", frontend.port)
-
-	proto.RegisterIncrementServiceServer(grpcServer, frontend)
-	serverError := grpcServer.Serve(listen)
-
-	if serverError != nil {
-		log.Printf("Could not register frontend")
-	}
-}
 
 func (f *Frontend) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error) {
-
-	//fmt.Printf("Printing the number of serevrs the frontend is connected to, %v", len(f.servers))
 	leader := *f.leader
-	response, er := leader.Increment(ctx, in)
-	fmt.Printf("Response in beginning %v", response)
-	if er != nil {
-		//fmt.Println("The frontend found out that the leader is dead, now going to find the new one")
-		//here we want to remove the dead leader form the frontends slice of servers
+	response, err:= leader.Increment(ctx, in)
 
+	if(err != nil){
+		log.Println("The frontend found out that the leader is dead")
+		//find highest portnumber an remove it. This is hardcoding, but don't know what else to do
+		toRemove := 0
+		highestPort := int32(5001)
 		for i := 0; i < len(f.servers); i++ {
-			if 5001 == f.servers[i].port {
-				f.servers = removeServer(f.servers, i)
+			if(f.servers[i].port > highestPort){
+				highestPort = f.servers[i].port
+				toRemove = i
 			}
 		}
-	}
-
-	for i := 0; i < len(f.servers); i++ {
-		//fmt.Println("Going though slice to find new leader")
-		message, _ := f.servers[i].server.GetLeaderRequest(context.Background(), &proto.Empty{})
-		if message.IsLeader {
-			f.leader = &f.servers[i].server
-			//fmt.Println("Updated the leeeeeader WHOOOOOOOOO")
-		} else {
-			fmt.Println("ew")
+		f.servers = removeServer(f.servers, toRemove)
+		//finding the new leader
+		for i := 0; i < len(f.servers); i++ {
+			message, _ := f.servers[i].server.GetLeaderRequest(context.Background(),&proto.Empty{})
+			if(message.IsLeader){
+				f.leader = &f.servers[i].server
+				fmt.Printf("Frontend updated the leader to be server at port: %v\n", message.Id)
+			} 
 		}
+		leaderNew := *f.leader
+		response, err = leaderNew.Increment(ctx, in)
 	}
-
-	fmt.Printf("Response later %v", response)
-	return response, er
+	return response, err
 }
 
 func removeServer(s []Server, i int) []Server {
