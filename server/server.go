@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
@@ -36,6 +37,15 @@ var (
 )
 
 func main() {
+	//setting the log file
+	f, err := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
+
+	
 	flag.Parse()
 	//Here we create a new server
 	//if the server has port 5001 it is chosen to be the first leader
@@ -111,7 +121,8 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 		// Retry until the connection is established
 		time.Sleep(500 * time.Millisecond)
 	}
-	log.Printf("Successfully connected to the replica with port %v!",portNumber)
+	fmt.Printf("Successfully connected to the replica with port %v!",portNumber)
+	log.Printf("Server with id: %v connected to replicaclient with id: %v\n",s.port, portNumber)
 
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
 	server.serverclients = append(server.serverclients, ReplicaClient{
@@ -129,7 +140,8 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 
 //tells us if this server is the leader
 func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*proto.LeaderMessage, error) {
-	fmt.Printf("Is this server the current leader?: %v\n", server.isLeader)
+	log.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
+	fmt.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
 	return &proto.LeaderMessage{Id: int32(server.port), IsLeader: server.isLeader}, nil
 }
 
@@ -142,32 +154,31 @@ func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.In
 
 	if(c.isLeader){
 		//update it self first
+		log.Printf("A client wants to increment value with: %v\n", in.Amount)
 		c.value = c.value + in.Amount
-		fmt.Printf("the value after increment is: %v", c.value)
-		fmt.Println("Increment in the leader class was called")
+		log.Printf("The leader has now incremented to: %v\n", c.value)
 		
 		//after updating itself, we have to notify the other clients
+		fmt.Println("YOOOOOO WTF")
 		//with raft this is done with a heartbeat method
 		for i := 0; i < len(c.serverclients); i++ {
+			fmt.Println("We get here************************")
 			//calling replicate with the value of the leader
 			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(),&proto.ReplicationValue{Value: c.value})
 			if(err != nil){
-				fmt.Println("**********Failed to update a replica****************")
+				log.Println("Failed to update a replica")
 			}
 		}
 	}
-	
-	fmt.Println("udated all servers")
 	return &proto.IncResponse{NewAmount: c.value, Id: int32(c.port)}, nil
 } 
 
 func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error) {
 	//If the replicated server does not have the correct value
-	fmt.Printf("Replicate was called")
 	if(s.value != in.Value){
 		s.value = in.Value
 	}
-	fmt.Printf("Replicate was called the incremented value is now: %v", s.value)
+	log.Printf("Server with id: %v now has updated value: %v\n", s.port, s.value)
 	return &proto.ReplicationAck{}, nil
 }
 
@@ -177,23 +188,21 @@ func (s *Server) heartbeat() {
 	// For each replication client, make sure it does still exist
 	for i := 0; i < len(s.serverclients); i++ {
 		// Request info from the client repeatedly to discover changes and to notice of the connection is lost
-
 		isLeader, err := s.serverclients[i].replicaClient.GetLeaderRequest(context.Background(), &proto.Empty{})
 
 		if err != nil {
 			// If an error has occurred it means we were unable to reach the replication node.
-			log.Println("Unable to reach a replication node!")
+			fmt.Printf("Server with id: %v was unable to reach a replicationclient!\n", s.port)
 
 			// Check if the unreachable node was the leader
 			lostNodeWasLeader := s.serverclients[i].isLeader
 
 			// Remove the node
-			log.Println("Now removing lost node from known replication nodes")
+			//log.Println("Now removing lost node from known replication nodes")
 			s.serverclients = removeReplicationClient(s.serverclients, i)
-			log.Printf("System now has %v replication nodes\n", len(s.serverclients))
 
 			if lostNodeWasLeader {
-				log.Println("Unable to reach leader node")
+				log.Printf("Server with id: %v found that the leader has crashed\n", s.port)
 				log.Println("A new leader must be assigned")
 
 				// We now need to assign a new leader
@@ -210,13 +219,13 @@ func (s *Server) heartbeat() {
 				}
 				// If we have the highest index set as new leader
 				if highest == int32(s.port) {
-					log.Println("I am the new leader!")
 					s.isLeader = true
+					log.Printf("Server with id: %v is now the new new leader!\n", s.port)
 				}
-				log.Println("A new leader has been picked")
-				log.Printf("the server with port: %v, has boolean isLeader = %v ", s.port, s.isLeader)
+				//log.Println("A new leader has been picked")
+				//log.Printf("the server with port: %v, has boolean isLeader = %v ", s.port, s.isLeader)
 			} else {
-				fmt.Println("The crashed server was not the leader")
+				log.Printf("Server with id: %v found that a replicaclient has crashed\n", s.port)
 			}
 		} else {
 			// Set isLeader based on node info. This lets the node discover new leaders

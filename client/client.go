@@ -28,7 +28,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		amountToIncrement, _ := strconv.ParseInt(scanner.Text(), 10, 0)
-		fmt.Printf("Calling increment method with amoun: %v\n", amountToIncrement)
+		fmt.Printf("Calling increment method with amount: %v\n", amountToIncrement)
 		_, err := frontend.Increment(context.Background(), &proto.IncRequest{Amount: int32(amountToIncrement)})
 		if err != nil {
 			fmt.Printf("Increment went wrong in client class")
