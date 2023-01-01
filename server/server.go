@@ -68,7 +68,7 @@ func main() {
 
 	go func() {
 		for {
-			time.Sleep(30000 * time.Millisecond)
+			time.Sleep(5000 * time.Millisecond)
 			s.heartbeat()
 		}
 	}()
