@@ -1,23 +1,38 @@
 # PassiveReplication
+# Distibuted Dictionary
+To run the program you have to open up three different terminals
 
-To run the program you have to open up four different terminals
-
-In the first three terminals, you have to start the three respective servers. They have to be started at port 5001, 5002 and 5003.
+In the first two terminals, you have to start the three respective servers. They have to be started at port 5001 and 5002.
 
 Feel free to copy the following three lines to each respective terminal to start the servers:
 
     go run server/server.go -port 5001
     go run server/server.go -port 5002
-    go run server/server.go -port 5003
 
 In the last terminal you have to open the frontend and the client on a port of your choosing
 To do so feel free to copy the following line:
 
-    go run client/frontend.go client/client.go c-port 8080
+    go run client/client.go c-port 8080
 
 It is important to wait for everything to be connected.
-Write in the exam that we could lock things to make sure that you cannot continue until everything is done
 
-We have chosen that it is the server with the highest portnumber that is always chosen to be the leader.
-This also makes it easier in the frontend, where is there is a leadercrash we just delete the server with the higest portnumber
-knowing that the leader MUST have been that one.
+If you want to add a word to the dictionary write the word "add" in your client terminal, and push enter.
+Then write the word you want to add to the dictionary, example: 
+hello
+and press enter
+
+then write the definition to the word, example:
+greeting
+and press enter.
+(The definition can only be one word)
+Then you have added a word and definition to the dictionary.
+
+If you want to read a defininition from the dictionary write the word "read" in your client terminal, and push enter.
+then write the word you want a definition of, example:
+hello
+and press enter
+
+The definition will then appear.
+
+To crash a server use control + c on your mac keyboard
+(I don't know on windows and linux)

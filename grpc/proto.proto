@@ -6,14 +6,32 @@ package Passivereplication; // module that you called in the go.mod
 option go_package = "grpc/proto";
 
 
-message IncRequest {
-    int32 amount = 1; // always put the "field" equal to the number. if you add more fields, 
+service DistributedDictionary{
+    rpc Add (AddReq) returns (AddRes){}
+    rpc Read (ReadReq) returns (ReadRes){}
+    rpc GetLeaderRequest(Empty) returns (LeaderMessage) {}
+    rpc Replicate(ReplicationAdd) returns (ReplicationAddRes) {}
+    
 }
 
-message IncResponse {
-    int32 newAmount = 1;
-    int32 id = 2;
+message AddReq {
+    string word = 1;
+    string def = 2; 
 }
+
+message AddRes{
+    bool accepted = 1;
+}
+
+message ReadReq {
+    string word = 1;
+}
+
+message ReadRes {
+    string def = 1;
+}
+
+
 
 message Empty {}
 
@@ -23,17 +41,14 @@ message LeaderMessage {
     bool isLeader = 2;
 }
 
-message ReplicationValue {
-    int32 value = 1;
+message ReplicationAdd {
+    string word = 1;
+    string def = 2; 
 }
 
-message ReplicationAck {}
-
-service IncrementService{
-    rpc Increment(IncRequest) returns (IncResponse) {}
-    rpc GetLeaderRequest(Empty) returns (LeaderMessage) {}
-    rpc Replicate(ReplicationValue) returns (ReplicationAck) {}
+message ReplicationAddRes {
 }
+
 
 
 //go mod init PassiveReplcation (Hvad mappen hedder)

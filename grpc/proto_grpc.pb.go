@@ -18,158 +18,194 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// IncrementServiceClient is the client API for IncrementService service.
+// DistributedDictionaryClient is the client API for DistributedDictionary service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type IncrementServiceClient interface {
-	Increment(ctx context.Context, in *IncRequest, opts ...grpc.CallOption) (*IncResponse, error)
+type DistributedDictionaryClient interface {
+	Add(ctx context.Context, in *AddReq, opts ...grpc.CallOption) (*AddRes, error)
+	Read(ctx context.Context, in *ReadReq, opts ...grpc.CallOption) (*ReadRes, error)
 	GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error)
-	Replicate(ctx context.Context, in *ReplicationValue, opts ...grpc.CallOption) (*ReplicationAck, error)
+	Replicate(ctx context.Context, in *ReplicationAdd, opts ...grpc.CallOption) (*ReplicationAddRes, error)
 }
 
-type incrementServiceClient struct {
+type distributedDictionaryClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewIncrementServiceClient(cc grpc.ClientConnInterface) IncrementServiceClient {
-	return &incrementServiceClient{cc}
+func NewDistributedDictionaryClient(cc grpc.ClientConnInterface) DistributedDictionaryClient {
+	return &distributedDictionaryClient{cc}
 }
 
-func (c *incrementServiceClient) Increment(ctx context.Context, in *IncRequest, opts ...grpc.CallOption) (*IncResponse, error) {
-	out := new(IncResponse)
-	err := c.cc.Invoke(ctx, "/Passivereplication.IncrementService/Increment", in, out, opts...)
+func (c *distributedDictionaryClient) Add(ctx context.Context, in *AddReq, opts ...grpc.CallOption) (*AddRes, error) {
+	out := new(AddRes)
+	err := c.cc.Invoke(ctx, "/Passivereplication.DistributedDictionary/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *incrementServiceClient) GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error) {
+func (c *distributedDictionaryClient) Read(ctx context.Context, in *ReadReq, opts ...grpc.CallOption) (*ReadRes, error) {
+	out := new(ReadRes)
+	err := c.cc.Invoke(ctx, "/Passivereplication.DistributedDictionary/Read", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *distributedDictionaryClient) GetLeaderRequest(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*LeaderMessage, error) {
 	out := new(LeaderMessage)
-	err := c.cc.Invoke(ctx, "/Passivereplication.IncrementService/GetLeaderRequest", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/Passivereplication.DistributedDictionary/GetLeaderRequest", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *incrementServiceClient) Replicate(ctx context.Context, in *ReplicationValue, opts ...grpc.CallOption) (*ReplicationAck, error) {
-	out := new(ReplicationAck)
-	err := c.cc.Invoke(ctx, "/Passivereplication.IncrementService/Replicate", in, out, opts...)
+func (c *distributedDictionaryClient) Replicate(ctx context.Context, in *ReplicationAdd, opts ...grpc.CallOption) (*ReplicationAddRes, error) {
+	out := new(ReplicationAddRes)
+	err := c.cc.Invoke(ctx, "/Passivereplication.DistributedDictionary/Replicate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// IncrementServiceServer is the server API for IncrementService service.
-// All implementations must embed UnimplementedIncrementServiceServer
+// DistributedDictionaryServer is the server API for DistributedDictionary service.
+// All implementations must embed UnimplementedDistributedDictionaryServer
 // for forward compatibility
-type IncrementServiceServer interface {
-	Increment(context.Context, *IncRequest) (*IncResponse, error)
+type DistributedDictionaryServer interface {
+	Add(context.Context, *AddReq) (*AddRes, error)
+	Read(context.Context, *ReadReq) (*ReadRes, error)
 	GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error)
-	Replicate(context.Context, *ReplicationValue) (*ReplicationAck, error)
-	mustEmbedUnimplementedIncrementServiceServer()
+	Replicate(context.Context, *ReplicationAdd) (*ReplicationAddRes, error)
+	mustEmbedUnimplementedDistributedDictionaryServer()
 }
 
-// UnimplementedIncrementServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedIncrementServiceServer struct {
+// UnimplementedDistributedDictionaryServer must be embedded to have forward compatible implementations.
+type UnimplementedDistributedDictionaryServer struct {
 }
 
-func (UnimplementedIncrementServiceServer) Increment(context.Context, *IncRequest) (*IncResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Increment not implemented")
+func (UnimplementedDistributedDictionaryServer) Add(context.Context, *AddReq) (*AddRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
-func (UnimplementedIncrementServiceServer) GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error) {
+func (UnimplementedDistributedDictionaryServer) Read(context.Context, *ReadReq) (*ReadRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedDistributedDictionaryServer) GetLeaderRequest(context.Context, *Empty) (*LeaderMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeaderRequest not implemented")
 }
-func (UnimplementedIncrementServiceServer) Replicate(context.Context, *ReplicationValue) (*ReplicationAck, error) {
+func (UnimplementedDistributedDictionaryServer) Replicate(context.Context, *ReplicationAdd) (*ReplicationAddRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replicate not implemented")
 }
-func (UnimplementedIncrementServiceServer) mustEmbedUnimplementedIncrementServiceServer() {}
+func (UnimplementedDistributedDictionaryServer) mustEmbedUnimplementedDistributedDictionaryServer() {}
 
-// UnsafeIncrementServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to IncrementServiceServer will
+// UnsafeDistributedDictionaryServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DistributedDictionaryServer will
 // result in compilation errors.
-type UnsafeIncrementServiceServer interface {
-	mustEmbedUnimplementedIncrementServiceServer()
+type UnsafeDistributedDictionaryServer interface {
+	mustEmbedUnimplementedDistributedDictionaryServer()
 }
 
-func RegisterIncrementServiceServer(s grpc.ServiceRegistrar, srv IncrementServiceServer) {
-	s.RegisterService(&IncrementService_ServiceDesc, srv)
+func RegisterDistributedDictionaryServer(s grpc.ServiceRegistrar, srv DistributedDictionaryServer) {
+	s.RegisterService(&DistributedDictionary_ServiceDesc, srv)
 }
 
-func _IncrementService_Increment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IncRequest)
+func _DistributedDictionary_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IncrementServiceServer).Increment(ctx, in)
+		return srv.(DistributedDictionaryServer).Add(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Passivereplication.IncrementService/Increment",
+		FullMethod: "/Passivereplication.DistributedDictionary/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IncrementServiceServer).Increment(ctx, req.(*IncRequest))
+		return srv.(DistributedDictionaryServer).Add(ctx, req.(*AddReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IncrementService_GetLeaderRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DistributedDictionary_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributedDictionaryServer).Read(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/Passivereplication.DistributedDictionary/Read",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributedDictionaryServer).Read(ctx, req.(*ReadReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DistributedDictionary_GetLeaderRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IncrementServiceServer).GetLeaderRequest(ctx, in)
+		return srv.(DistributedDictionaryServer).GetLeaderRequest(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Passivereplication.IncrementService/GetLeaderRequest",
+		FullMethod: "/Passivereplication.DistributedDictionary/GetLeaderRequest",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IncrementServiceServer).GetLeaderRequest(ctx, req.(*Empty))
+		return srv.(DistributedDictionaryServer).GetLeaderRequest(ctx, req.(*Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IncrementService_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplicationValue)
+func _DistributedDictionary_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicationAdd)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IncrementServiceServer).Replicate(ctx, in)
+		return srv.(DistributedDictionaryServer).Replicate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/Passivereplication.IncrementService/Replicate",
+		FullMethod: "/Passivereplication.DistributedDictionary/Replicate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IncrementServiceServer).Replicate(ctx, req.(*ReplicationValue))
+		return srv.(DistributedDictionaryServer).Replicate(ctx, req.(*ReplicationAdd))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// IncrementService_ServiceDesc is the grpc.ServiceDesc for IncrementService service.
+// DistributedDictionary_ServiceDesc is the grpc.ServiceDesc for DistributedDictionary service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var IncrementService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Passivereplication.IncrementService",
-	HandlerType: (*IncrementServiceServer)(nil),
+var DistributedDictionary_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "Passivereplication.DistributedDictionary",
+	HandlerType: (*DistributedDictionaryServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Increment",
-			Handler:    _IncrementService_Increment_Handler,
+			MethodName: "Add",
+			Handler:    _DistributedDictionary_Add_Handler,
+		},
+		{
+			MethodName: "Read",
+			Handler:    _DistributedDictionary_Read_Handler,
 		},
 		{
 			MethodName: "GetLeaderRequest",
-			Handler:    _IncrementService_GetLeaderRequest_Handler,
+			Handler:    _DistributedDictionary_GetLeaderRequest_Handler,
 		},
 		{
 			MethodName: "Replicate",
-			Handler:    _IncrementService_Replicate_Handler,
+			Handler:    _DistributedDictionary_Replicate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

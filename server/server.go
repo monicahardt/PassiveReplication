@@ -3,37 +3,42 @@ package main
 import (
 	proto "Passivereplication/grpc"
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	proto.UnimplementedIncrementServiceServer
+	//proto.UnimplementedIncrementServiceServer
+	proto.UnimplementedDistributedDictionaryServer
 	port          int
 	value         int32
 	isLeader      bool
 	serverclients []ReplicaClient
+	dictionary    map[string]string
+	mu            sync.Mutex
 }
 
 type ReplicaClient struct {
-	replicaClient proto.IncrementServiceClient
+	//replicaClient proto.IncrementServiceClient
+	replicaClient proto.DistributedDictionaryClient
 	isLeader      bool
 	port          int
-	value         int32
+	dictionary    map[string]string
 }
 
 var (
 	port          = flag.Int("port", 0, "server port number") // create the port that recieves the port that the client wants to access to
 	localAddress  int32
 	leaderAddress int32
+	dic           = make(map[string]string)
 )
 
 func main() {
@@ -45,26 +50,24 @@ func main() {
 	defer f.Close()
 	log.SetOutput(f)
 
-	
 	flag.Parse()
 	//Here we create a new server
 	//if the server has port 5001 it is chosen to be the first leader
 	s := &Server{
 		port:          *port,
 		serverclients: make([]ReplicaClient, 0),
-		isLeader: *port == 5003,
+		isLeader:      *port == 5002,
+		dictionary:    dic,
 	}
 
-	if(s.isLeader){
+	if s.isLeader {
 		fmt.Println("The leader has started")
 	}
 
 	//starting this server and listening on the port
 	go startServer(s)
-	go s.connectToReplica(s,5001)
-	go s.connectToReplica(s,5002)
-	go s.connectToReplica(s,5003)
-
+	go s.connectToReplica(s, 5001)
+	go s.connectToReplica(s, 5002)
 
 	go func() {
 		for {
@@ -77,8 +80,7 @@ func main() {
 	}
 }
 
-
-//The normal startserver method. Creates new grpc server and creates the listener
+// The normal startserver method. Creates new grpc server and creates the listener
 func startServer(server *Server) {
 	grpcServer := grpc.NewServer()                                           // create a new grpc server
 	listen, err := net.Listen("tcp", "localhost:"+strconv.Itoa(server.port)) // creates the listener
@@ -89,7 +91,8 @@ func startServer(server *Server) {
 
 	log.Printf("Server started at port %v\n", server.port)
 
-	proto.RegisterIncrementServiceServer(grpcServer, server)
+	//proto.RegisterIncrementServiceServer(grpcServer, server)
+	proto.RegisterDistributedDictionaryServer(grpcServer, server)
 	serverError := grpcServer.Serve(listen)
 
 	if serverError != nil {
@@ -97,7 +100,7 @@ func startServer(server *Server) {
 	}
 }
 
-	// Connect with replica's IP
+// Connect with replica's IP
 func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(int(portNumber)), grpc.WithInsecure())
 	if err != nil {
@@ -106,7 +109,7 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	defer conn.Close()
 
 	// Create a new replicationClient struct to be stored in the replication server struct
-	newReplicationClient := proto.NewIncrementServiceClient(conn)
+	newReplicationClient := proto.NewDistributedDictionaryClient(conn)
 
 	// Check if the newReplicationClient is the leader
 	// Since the server may not exist yet, we keep asking until we get a response
@@ -121,8 +124,8 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 		// Retry until the connection is established
 		time.Sleep(500 * time.Millisecond)
 	}
-	fmt.Printf("Successfully connected to the replica with port %v!\n",portNumber)
-	log.Printf("Server with id: %v connected to replicaclient with id: %v\n",s.port, portNumber)
+	fmt.Printf("Successfully connected to the replica with port %v!\n", portNumber)
+	log.Printf("Server with id: %v connected to replicaclient with id: %v\n", s.port, portNumber)
 
 	// Append the new ReplicationClient to the list of replicationClients stored in the ReplicationServer struct
 	server.serverclients = append(server.serverclients, ReplicaClient{
@@ -139,49 +142,66 @@ func (s *Server) connectToReplica(server *Server, portNumber int32) {
 	}
 }
 
-
-//tells us if this server is the leader
+// tells us if this server is the leader
 func (server *Server) GetLeaderRequest(_ context.Context, _ *proto.Empty) (*proto.LeaderMessage, error) {
 	//log.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
 	//fmt.Printf("It is %v that server with id: %v is the leader\n", server.isLeader, server.port)
 	return &proto.LeaderMessage{Id: int32(server.port), IsLeader: server.isLeader}, nil
 }
 
-func (c *Server) Increment(ctx context.Context, in *proto.IncRequest) (*proto.IncResponse, error){
-	//checking if the amount is valid
-	if in.Amount <= 0 {
-		log.Println("return fail")
-		return &proto.IncResponse{}, errors.New("You must increment!")
-	} 
-
-	if(c.isLeader){
-		//update it self first
-		log.Printf("A client wants to increment value with: %v\n", in.Amount)
-		c.value = c.value + in.Amount
-		log.Printf("The leader has now incremented to: %v\n", c.value)
-		
+func (c *Server) Add(ctx context.Context, in *proto.AddReq) (*proto.AddRes, error) {
+	//check if i am leader, then add word to the map
+	//return true if it went good
+	c.mu.Lock()
+	if c.isLeader {
+		//update self first
+		log.Printf("A client wants to add the word: %v to the dictionary", in.GetWord())
+		c.dictionary[in.GetWord()] = in.GetDef()
+		log.Printf("The leader has now added a definition to: %v\n", in.GetWord())
 		//after updating itself, we have to notify the other clients
 		//with raft this is done with a heartbeat method
 		for i := 0; i < len(c.serverclients); i++ {
 			//calling replicate with the value of the leader
-			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(),&proto.ReplicationValue{Value: c.value})
-			if(err != nil){
+			_, err := c.serverclients[i].replicaClient.Replicate(context.Background(), &proto.ReplicationAdd{Word: in.GetWord(), Def: c.dictionary[in.GetWord()]})
+			if err != nil {
 				log.Println("Failed to update a replica")
+				fmt.Println("Failed to update a replica")
 			}
 		}
 	}
-	return &proto.IncResponse{NewAmount: c.value, Id: int32(c.port)}, nil
-} 
-
-func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationValue) (*proto.ReplicationAck, error) {
-	//If the replicated server does not have the correct value
-	if(s.value != in.Value){
-		s.value = in.Value
+	response := c.dictionary[in.GetWord()] == in.Def
+	if response {
+		log.Printf("The addition has been accepted")
+	} else {
+		log.Printf("The addition has not been accepted")
 	}
-	log.Printf("Server with id: %v now has updated value: %v\n", s.port, s.value)
-	return &proto.ReplicationAck{}, nil
+
+	defer c.mu.Unlock()
+	return &proto.AddRes{Accepted: response}, nil
 }
 
+func (c *Server) Read(ctx context.Context, in *proto.ReadReq) (*proto.ReadRes, error) {
+	log.Printf("A client wants to read the word: %v from the dictionary", in.GetWord())
+	c.mu.Lock()
+	if c.dictionary[in.GetWord()] == "" {
+		log.Println("The word requested is not in the dictionary")
+		return &proto.ReadRes{Def: ""}, nil
+	}
+
+	def := c.dictionary[in.GetWord()]
+	log.Printf("The definition of %v is %v", in.GetWord(), def)
+	defer c.mu.Unlock()
+	return &proto.ReadRes{Def: def}, nil
+}
+
+func (s *Server) Replicate(ctx context.Context, in *proto.ReplicationAdd) (*proto.ReplicationAddRes, error) {
+	//If the replicated server does not have the correct definition
+	if s.dictionary[in.GetWord()] != in.GetDef() || s.dictionary[in.GetWord()] == "" {
+		s.dictionary[in.GetWord()] = in.GetDef()
+	}
+	log.Printf("The replicated server has dictionary size: %v", len(s.dictionary))
+	return &proto.ReplicationAddRes{}, nil
+}
 
 // BULLY!!!!!!!
 func (s *Server) heartbeat() {
